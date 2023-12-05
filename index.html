@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>single level json editor</title>
+    <meta name="keywords" content="json editor, simple json editor, single level json editor" />
+    <meta name="description" content="single level json editor" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        .heading {
+            padding: 12px;
+            background-color: aliceblue;
+            margin-bottom: 12px;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            padding: 20px;
+            font-family: Consolas,monospace;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container mt-3 mb-3">
+        <div class="heading">
+            <h3>single level json editor</h3>
+        </div>
+        <div class="row">
+            <div id="json-items" class="col-12 col-lg-6 mb-2">
+                <button type="button" id="add-json-row" class="btn btn-sm btn-primary">+ add row</button>
+                <div id="json-rows"></div>
+            </div>
+            <div class="col-12 col-lg-6 position-relative">
+                <button type="button" class="btn btn-sm btn-secondary position-absolute end-0 copy-btn">copy to clipboard</button>
+                <textarea onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
+                <div style="display: none;" class="alert alert-danger alert-dismissible fade show position-absolute bottom-0" role="alert">
+                    Your json seems invalid
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+            </div>
+        </div>
+    </div>
+
+    <script id="template" type="text/template">
+        <div class="row align-items-center border-bottom py-3 json-row">
+            <div class="col">
+                <input type="text" class="form-control shadow-none field-key" />
+            </div>
+            <div class="col">
+                <input type="text" class="form-control shadow-none field-value" />
+            </div>
+            <div class="col-1">
+                <button class="btn btn-link text-danger text-decoration-none field-remove">x</button>
+            </div>
+        </div>
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
+
+    <script type="text/javascript">
+        // single source of truth;
+        let fieldsData = {
+            "variation_name": "Variation Two",
+            "headline copy": "Welcome",
+            "sub headline copy": "Subheadlines copy",
+            "button copy": "Get started",
+            "button color": "blue",
+            "legal copy": "legal copy"
+        };
+
+        ///
+        const $jsonItems = $("#json-items");
+        const $textarea = $("textarea");
+        const $addRowBtn = $("#add-json-row");
+        const templateStr = $("#template").html().trim();
+        const $rows = $("#json-rows");
+
+        function copyToClipboard(t){if(window.clipboardData&&window.clipboardData.setData)return window.clipboardData.setData("Text",t);if(document.queryCommandSupported&&document.queryCommandSupported("copy")){var e=document.createElement("textarea");e.textContent=t,e.style.position="fixed",document.body.appendChild(e),e.select();try{return document.execCommand("copy")}catch(a){return console.warn("Copy to clipboard failed.",a),prompt("Copy to clipboard: Ctrl+C, Enter",t)}finally{document.body.removeChild(e)}}}
+
+        function strToJson(str) {
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                $(".alert").show();
+                console.log("error parsing json: ", e);
+            }
+            return false;
+        }
+
+        function renderJsonTextArea() {
+            $(".alert").hide();
+            $textarea.val(JSON.stringify(fieldsData, null, 4));
+        }
+
+        function readFieldsAndRenderTextArea() {
+            // read fields, updates state, and render text area
+            let newState = {};
+            const $items = $rows.children().each(function() {
+                const key = $(this).find(".field-key").val().trim();
+                const value = $(this).find(".field-value").val().trim();
+                if(key!== "" && !newState[key]) newState[key] = value;
+            });
+            fieldsData = newState;
+            renderJsonTextArea();
+        }
+
+        // renders fields and text area from state
+        function render() {
+            const els = [];
+            for( const key in fieldsData ) {
+                const $el = $(templateStr);
+                $el.find("input.field-key").val(key);
+                $el.find("input.field-value").val(fieldsData[key]);
+                els.push($el);
+            }
+            $rows.html(els);
+            renderJsonTextArea();
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            render();
+
+            $textarea.on("paste blur", function() {
+                const jsonData = strToJson($(this).val());
+                if( jsonData ) {
+                    fieldsData = jsonData;
+                    render();
+                }
+            });
+
+            $rows.on("blur", ".field-key,.field-value", function() {
+                readFieldsAndRenderTextArea();
+            });
+
+            $rows.on("click", ".field-remove", function() {
+                $(this).parents(".row").first().remove();
+                readFieldsAndRenderTextArea();
+            });
+
+            $addRowBtn.on("click", function() {
+                const $el = $(templateStr);
+                $rows.append($el);
+            });
+
+            $(".copy-btn").on("click", function() {
+                copyToClipboard($textarea.val().trim());
+            });
+
+            $(".btn-close").on("click", function() {
+                $(this).parent().hide();
+            });
+        });
+    </script>
+  </body>
+</html>
